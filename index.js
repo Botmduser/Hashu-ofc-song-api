@@ -1,51 +1,90 @@
-const express = require("express")
-const ytSearch = require("yt-search")
-const youtubedl = require("youtube-dl-exec")
-const cors = require("cors")
+const express = require("express");
+const cors = require("cors");
 
-const app = express()
-app.use(cors())
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-const PORT = process.env.PORT || 3000
-
-app.get("/", (req, res) => {
-    res.send("🔥 Full Song API Running")
-})
-
-app.get("/api/song", async (req, res) => {
-    try {
-
-        const name = req.query.name
-        if (!name) return res.json({ status: false, message: "Song name required" })
-
-        // 🎵 SEARCH
-        const search = await ytSearch(name)
-
-        if (!search?.videos?.length) {
-            return res.json({ status: false, message: "No song found" })
-        }
-
-        const video = search.videos[0]
-
-        // 🎧 DOWNLOAD AUDIO STREAM
-        const stream = youtubedl(video.url, {
-            extractAudio: true,
-            audioFormat: "mp3",
-            audioQuality: "0",
-            output: "-"
-        })
-
-        res.setHeader("Content-Type", "audio/mpeg")
-        res.setHeader("Content-Disposition", `attachment; filename="${video.title}.mp3"`)
-
-        stream.stdout.pipe(res)
-
-    } catch (e) {
-        console.log(e)
-        res.json({ status: false, message: e.message })
+/* 🧠 MOCK SONG DATABASE */
+const songs = [
+    {
+        id: "UcjVAR465ww",
+        title: "Sindagana",
+        artist: "Manjula Pushpakumara",
+        views: 988224,
+        duration: "3:37",
+        thumbnail: "https://i.ytimg.com/vi/UcjVAR465ww/hq720.jpg",
+        downloads: [
+            { quality: "128kbps", url: "https://your-cdn.com/sindagana-128.mp3" },
+            { quality: "320kbps", url: "https://your-cdn.com/sindagana-320.mp3" }
+        ]
+    },
+    {
+        id: "abc123",
+        title: "Example Song",
+        artist: "Sample Artist",
+        views: 120000,
+        duration: "4:10",
+        thumbnail: "https://i.ytimg.com/vi/abc123/hq720.jpg",
+        downloads: [
+            { quality: "128kbps", url: "https://your-cdn.com/example-128.mp3" }
+        ]
     }
-})
+];
 
-app.listen(PORT, () => {
-    console.log("Server running on " + PORT)
-})
+/* 🔍 SEARCH API (song name search) */
+app.get("/api/search", (req, res) => {
+    const q = req.query.q?.toLowerCase();
+
+    if (!q) {
+        return res.json({ status: 400, message: "Query required" });
+    }
+
+    const results = songs.filter(song =>
+        song.title.toLowerCase().includes(q)
+    );
+
+    res.json({
+        status: 200,
+        query: q,
+        results: results.map(song => ({
+            id: song.id,
+            title: song.title,
+            artist: song.artist,
+            thumbnail: song.thumbnail,
+            duration: song.duration,
+            views: song.views
+        }))
+    });
+});
+
+/* 🎵 SONG DETAIL API */
+app.get("/api/song/:id", (req, res) => {
+    const song = songs.find(s => s.id === req.params.id);
+
+    if (!song) {
+        return res.json({ status: 404, message: "Song not found" });
+    }
+
+    res.json({
+        status: 200,
+        creator: "VajiraOfficial",
+        data: {
+            metadata: {
+                type: "video",
+                videoId: song.id,
+                title: song.title,
+                artist: song.artist,
+                image: song.thumbnail,
+                views: song.views,
+                duration: song.duration
+            },
+            downloads: song.downloads
+        }
+    });
+});
+
+/* 🌐 SERVER */
+app.listen(3000, () => {
+    console.log("API running on http://localhost:3000");
+});
