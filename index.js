@@ -1,7 +1,7 @@
 const express = require("express")
 const cors = require("cors")
+const youtubedl = require("youtube-dl-exec")
 const ytSearch = require("yt-search")
-const ytdl = require("@distube/ytdl-core")
 
 const app = express()
 app.use(cors())
@@ -9,7 +9,7 @@ app.use(cors())
 const PORT = process.env.PORT || 3000
 
 app.get("/", (req, res) => {
-    res.send("🔥 API Running")
+    res.send("🔥 Stable Song API Running")
 })
 
 app.get("/api/song", async (req, res) => {
@@ -25,14 +25,16 @@ app.get("/api/song", async (req, res) => {
 
         const video = search.videos[0]
 
-        const stream = ytdl(video.url, {
-            filter: "audioonly",
-            quality: "highestaudio"
+        const stream = youtubedl(video.url, {
+            extractAudio: true,
+            audioFormat: "mp3",
+            audioQuality: "0",
+            output: "-"
         })
 
         res.setHeader("Content-Type", "audio/mpeg")
 
-        stream.pipe(res)
+        stream.stdout.pipe(res)
 
     } catch (e) {
         console.log(e)
